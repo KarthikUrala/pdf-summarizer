@@ -31,3 +31,4 @@ def main(payload: dict) -> str:
     except Exception as e:
         logging.error(f"Failed to upload summary: {str(e)}")
         raise
+
