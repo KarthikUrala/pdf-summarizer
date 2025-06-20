@@ -100,3 +100,6 @@ python test_pipeline.py
 ✅ Project runs end-to-end locally using the test script
 
 ⚠️ Azure Functions triggers can be enabled for full deployment
+
+
+# Youtube link- https://youtu.be/mYOPd9wDidw
