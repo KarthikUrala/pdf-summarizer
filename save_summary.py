@@ -2,25 +2,32 @@ import os
 from azure.storage.blob import BlobServiceClient
 import logging
 
-def main(input: dict) -> str:
-    summary = input["summary"]
-    filename = input["filename"]
-    output_filename = f"{os.path.splitext(filename)[0]}_summary.txt"
+def main(payload: dict) -> str:
+    logging.info("Saving summary to Blob Storage...")
+
+    # Read from environment
+    blob_connection_str = os.environ.get("AzureWebJobsStorage")
+    blob_base_url = os.environ.get("BLOB_STORAGE_ENDPOINT")
+
+    if not all([blob_connection_str, blob_base_url]):
+        raise Exception("Missing AzureWebJobsStorage or BLOB_STORAGE_ENDPOINT in environment variables.")
+
+    filename = payload.get("filename", "output.txt").replace(".pdf", "-summary.txt")
+    summary = payload.get("summary", "")
+
+    if not summary:
+        raise ValueError("Summary content is empty.")
 
     try:
-        blob_service_client = BlobServiceClient.from_connection_string(os.environ["AzureWebJobsStorage"])
-        output_container = blob_service_client.get_container_client("output")
+        # Connect to blob service
+        blob_service_client = BlobServiceClient.from_connection_string(blob_connection_str)
+        container_name = "output"
+        blob_client = blob_service_client.get_blob_client(container=container_name, blob=filename)
 
-        logging.info(f"Uploading summary to blob: {output_filename}")
-
-        output_container.upload_blob(
-            name=output_filename,
-            data=summary,
-            overwrite=True
-        )
-
-        return f"Saved summary to {output_filename}"
-
+        # Upload content
+        blob_client.upload_blob(summary, overwrite=True)
+        logging.info(f"✅ Summary uploaded to container '{container_name}' as '{filename}'")
+        return f"{blob_base_url}/{container_name}/{filename}"
     except Exception as e:
-        logging.error(f"Failed to upload summary to blob: {e}")
+        logging.error(f"Failed to upload summary: {str(e)}")
         raise

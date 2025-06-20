@@ -5,7 +5,7 @@ from summarize_text import main as summarize_text
 from save_summary import main as save_summary
 
 # Load environment variables from local.settings.json
-with open("local.settings.json") as f:
+with open("local.settings.json", encoding="utf-8") as f:
     config = json.load(f)
     for key, value in config["Values"].items():
         os.environ[key] = value

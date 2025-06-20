@@ -1,33 +1,47 @@
 import os
-import openai
 import logging
+from openai import AzureOpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
-def main(extracted_text: str) -> str:
+def main(text: str) -> str:
     try:
-        openai.api_key = os.environ["AZURE_OPENAI_KEY"]
-        openai.api_base = os.environ["AZURE_OPENAI_ENDPOINT"]
-        openai.api_type = "azure"
-        openai.api_version = "2023-05-15"
-        deployment = os.environ["CHAT_MODEL_DEPLOYMENT_NAME"]
-    except KeyError as e:
-        raise EnvironmentError(f"Missing required environment variable: {e}")
+        logging.info("Starting summary generation...")
 
-    try:
-        logging.info("Sending extracted text to OpenAI for summarization.")
-        response = openai.ChatCompletion.create(
-            engine=deployment,
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that summarizes documents."},
-                {"role": "user", "content": f"Summarize this document:\n\n{extracted_text}"}
-            ],
-            temperature=0.3,
-            max_tokens=500
+        # Load credentials from environment variables
+        endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+        api_key = os.environ.get("AZURE_OPENAI_KEY")
+        deployment = os.environ.get("CHAT_MODEL_DEPLOYMENT_NAME")
+
+        if not all([endpoint, api_key, deployment]):
+            raise Exception("Missing one or more required environment variables for OpenAI")
+
+        # Setup Azure OpenAI client
+        client = AzureOpenAI(
+            api_key=api_key,
+            api_version="2024-02-15-preview",
+            azure_endpoint=endpoint
         )
 
-        summary = response.choices[0].message.content.strip()
-        logging.info("Summary successfully generated.")
-        return summary
+        messages: list[ChatCompletionMessageParam] = [
+            {
+                "role": "system",
+                "content": "You are an assistant that summarizes PDF content."
+            },
+            {
+                "role": "user",
+                "content": text
+            }
+        ]
+
+        response = client.chat.completions.create(
+            model=deployment,
+            messages=messages,
+            temperature=0.7
+        )
+
+        return response.choices[0].message.content.strip()
 
     except Exception as e:
-        logging.error(f"Error while generating summary: {e}")
+        logging.error("Error while generating summary:")
+        logging.error(str(e))
         raise
